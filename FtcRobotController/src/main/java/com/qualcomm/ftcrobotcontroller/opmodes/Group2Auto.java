@@ -37,6 +37,7 @@ import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.ServoController;
 import com.qualcomm.robotcore.hardware.TouchSensor;
 import com.qualcomm.robotcore.util.Range;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 /**
  * TeleOp Mode
@@ -56,6 +57,17 @@ public class Group2Auto extends OpMode {
 	final static double CLAW_MIN_RANGE  = 0.30;
 	final static double CLAW_MAX_RANGE  = 0.9;
 	final static double MOTOR_POWER = 0.15; // Higher values will cause the robot to move faster
+	private enum State
+	{
+		STATE_INITIAL,
+		STATE_WAIT_FOR_TOUCH,
+		STATE_DRIVE_TO_WALL,
+		STATE_STOP,
+	}
+	// Loop cycle time stats variables
+	public ElapsedTime  mRuntime = new ElapsedTime();   // Time into round.
+	private ElapsedTime mStateTime = new ElapsedTime();  // Time into current state
+	private State       mCurrentState;    // Current State Machine State.
 
 	// position of the arm servo.
 	double armPosition;
@@ -113,14 +125,73 @@ public class Group2Auto extends OpMode {
 
 		// enable pwm.
 		sc = hardwareMap.servoController.get("matrixServo");
-		sc.pwmEnable();
+		//sc.pwmEnable();
 
-		arm = hardwareMap.servo.get("servo_1");
-		claw = hardwareMap.servo.get("servo_6");
+	//	arm = hardwareMap.servo.get("servo_1");
+	//	claw = hardwareMap.servo.get("servo_6");
 		sensor_touch = hardwareMap.touchSensor.get ("sensor_touch");
 		// assign the starting position of the wrist and claw
 		armPosition = 0.2;
 		clawPosition = 0.2;
+	}
+	@Override
+	public void start()
+	{
+		// Setup Robot devices, set initial state and start game clock
+		mRuntime.reset();           // Zero game clock
+		newState(State.STATE_INITIAL);
+	}
+	//--------------------------------------------------------------------------
+	// loop
+	//--------------------------------------------------------------------------
+	@Override
+	public void loop()
+	{
+		// Send the current state info (state and time) back to first line of driver station telemetry.
+		telemetry.addData("0", String.format("%4.1f ", mStateTime.time()) + mCurrentState.toString());
+
+		// Execute the current state.  Each STATE's case code does the following:
+		// 1: Look for an EVENT that will cause a STATE change
+		// 2: If an EVENT is found, take any required ACTION, and then set the next STATE
+		//   else
+		// 3: If no EVENT is found, do processing for the current STATE and send TELEMETRY data for STATE.
+		//
+		switch (mCurrentState)
+		{
+			case STATE_INITIAL:         // Stay in this state until encoders are both Zero.
+				//do something
+				newState(State.STATE_WAIT_FOR_TOUCH);  // Next State:
+
+				break;
+
+			case STATE_WAIT_FOR_TOUCH: // Follow path until last segment is completed
+				if (sensor_touch.isPressed())
+				{
+
+					newState(State.STATE_DRIVE_TO_WALL);      // Next State:
+				}
+				else
+				{
+					// Display Diagnostic data for this state.
+					telemetry.addData("1", String.format("WAIT_FOR_TOUCH"));
+				}
+				break;
+
+			case STATE_DRIVE_TO_WALL: // Follow path until last segment is completed
+				if (foundWall())
+				{
+
+					newState(State.STATE_STOP);      // Next State:
+				}
+				else
+				{
+					// Display Diagnostic data for this state.
+					telemetry.addData("1", String.format("DRIVE_TO_WALL"));
+				}
+				break;
+			case STATE_STOP:
+				break;
+		}
 	}
 
 	/*
@@ -128,48 +199,49 @@ public class Group2Auto extends OpMode {
 	 *
 	 * @see com.qualcomm.robotcore.eventloop.opmode.OpMode#run()
 	 */
-	@Override
-	public void loop() {
-		double left;
-		double right;
-		if (sensor_touch.isPressed()) {
-
-
-
-			     /*
-				 *
-				 * Move forward
-				 */
-			left = MOTOR_POWER;
-			right = MOTOR_POWER;
-
-		} else {
-			/*
-			 * Shut off motors
-			 */
-			left = 0.0;
-			right = 0.0;
-		}
-
-		/*
-		 * set the motor power
-		 */
-		motorRight.setPower(right);
-		motorLeft.setPower(left);
-
-		/*
-		 * Send telemetry data back to driver station. Note that if we are using
-		 * a legacy NXT-compatible motor controller, then the getPower() method
-		 * will return a null value. The legacy NXT-compatible motor controllers
-		 * are currently write only.
-		 */
-        telemetry.addData("Text", "*** Robot Data***");
-        telemetry.addData("arm", "arm:  " + String.format("%.2f", armPosition));
-        telemetry.addData("claw", "claw:  " + String.format("%.2f", clawPosition));
-        telemetry.addData("left tgt pwr",  "left  pwr: " + String.format("%.2f", left));
-        telemetry.addData("right tgt pwr", "right pwr: " + String.format("%.2f", right));
-
-	}
+//	@Override
+//	public void loop() {
+//		double left;
+//		double right;
+//
+//		if (sensor_touch.isPressed()) {
+//
+//
+//
+//			     /*
+//				 *
+//				 * Move forward
+//				 */
+//			left = MOTOR_POWER;
+//			right = MOTOR_POWER;
+//
+//		} else {
+//			/*
+//			 * Shut off motors
+//			 */
+//			left = 0.0;
+//			right = 0.0;
+//		}
+//
+//		/*
+//		 * set the motor power
+//		 */
+//		motorRight.setPower(right);
+//		motorLeft.setPower(left);
+//
+//		/*
+//		 * Send telemetry data back to driver station. Note that if we are using
+//		 * a legacy NXT-compatible motor controller, then the getPower() method
+//		 * will return a null value. The legacy NXT-compatible motor controllers
+//		 * are currently write only.
+//		 */
+//        telemetry.addData("Text", "*** Robot Data***");
+//        telemetry.addData("arm", "arm:  " + String.format("%.2f", armPosition));
+//        telemetry.addData("claw", "claw:  " + String.format("%.2f", clawPosition));
+//        telemetry.addData("left tgt pwr",  "left  pwr: " + String.format("%.2f", left));
+//        telemetry.addData("right tgt pwr", "right pwr: " + String.format("%.2f", right));
+//
+//	}
 
 	/*
 	 * Code to run when the op mode is first disabled goes here
@@ -214,6 +286,16 @@ public class Group2Auto extends OpMode {
 
 		// return scaled value.
 		return dScale;
+	}
+	private boolean foundWall()
+	{
+		return true;
+	}
+	private void newState(State newState)
+	{
+		// Reset the state time, and then change to next state.
+		mStateTime.reset();
+		mCurrentState = newState;
 	}
 
 }
