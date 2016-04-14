@@ -124,7 +124,8 @@ public class Group2Auto extends OpMode {
 		motorRight.setDirection(DcMotor.Direction.REVERSE);
 
 		// enable pwm.
-		sc = hardwareMap.servoController.get("matrixServo");
+		///sc
+		//sc = hardwareMap.servoController.get("matrixServo");
 		//sc.pwmEnable();
 
 	//	arm = hardwareMap.servo.get("servo_1");
