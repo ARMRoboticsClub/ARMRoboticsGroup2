@@ -34,6 +34,7 @@ package com.qualcomm.ftcrobotcontroller.opmodes;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.hardware.OpticalDistanceSensor;
 import com.qualcomm.robotcore.hardware.ServoController;
 import com.qualcomm.robotcore.hardware.TouchSensor;
 import com.qualcomm.robotcore.util.Range;
@@ -87,6 +88,7 @@ public class Group2Auto extends OpMode {
 	Servo arm;
 	ServoController sc;
 	TouchSensor sensor_touch;
+    OpticalDistanceSensor sensor_distance;
 	/**
 	 * Constructor
 	 */
@@ -131,6 +133,7 @@ public class Group2Auto extends OpMode {
 	//	arm = hardwareMap.servo.get("servo_1");
 	//	claw = hardwareMap.servo.get("servo_6");
 		sensor_touch = hardwareMap.touchSensor.get ("sensor_touch");
+        sensor_distance = hardwareMap.opticalDistanceSensor.get ("sensor_distance");
 		// assign the starting position of the wrist and claw
 		armPosition = 0.2;
 		clawPosition = 0.2;
@@ -181,13 +184,14 @@ public class Group2Auto extends OpMode {
 			case STATE_DRIVE_TO_WALL: // Follow path until last segment is completed
 				if (foundWall())
 				{
-
+                    stopMotors();
 					newState(State.STATE_STOP);      // Next State:
 				}
 				else
 				{
-					// Display Diagnostic data for this state.
-					telemetry.addData("1", String.format("DRIVE_TO_WALL"));
+					//drive forward
+                    driveForward();
+                    telemetry.addData("1", String.format("DRIVE_TO_WALL"));
 				}
 				break;
 			case STATE_STOP:
@@ -290,8 +294,29 @@ public class Group2Auto extends OpMode {
 	}
 	private boolean foundWall()
 	{
-		return true;
+        double distance = sensor_distance.getLightDetected();
+        telemetry.addData("2", "distance:  " + String.format("%.2f", distance));
+
+        if (distance < 0.05) {
+          return false;
+        } else if (distance >= 0.05){
+          return true;
+        }
+        return false;
 	}
+
+    private void driveForward()
+    {
+        motorRight.setPower(MOTOR_POWER);
+		motorLeft.setPower(MOTOR_POWER);
+    }
+
+    private void stopMotors()
+    {
+        motorRight.setPower(0);
+        motorLeft.setPower(0);
+    }
+
 	private void newState(State newState)
 	{
 		// Reset the state time, and then change to next state.
